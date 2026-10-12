@@ -685,19 +685,19 @@ img {
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--blue-700);
-  font-size: 0.82rem;
+  font-size: 1.3rem;
   margin: 0 0 0.6rem;
 }
 
 .families__parents {
   margin: 0 0 0.5rem;
-  font-size: 1.02rem;
+  font-size: 1.9rem;
   color: var(--blue-900);
 }
 
 .families__address {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: 1.4rem;
   color: var(--gray-500);
   font-style: italic;
 }
@@ -706,7 +706,7 @@ img {
   margin: 2.4rem 0 1.6rem;
   font-family: var(--font-caps);
   letter-spacing: 0.2em;
-  font-size: 0.85rem;
+  font-size: 1.3rem;
   text-transform: uppercase;
   color: var(--gray-500);
 }
@@ -729,7 +729,7 @@ img {
   margin: 0.2rem 0 0;
   font-family: var(--font-caps);
   letter-spacing: 0.28em;
-  font-size: 0.72rem;
+  font-size: 1rem;
   color: var(--gold-500);
   text-transform: uppercase;
 }
