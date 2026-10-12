@@ -13,6 +13,8 @@ function getScrollSpeed() {
     : AUTO_SCROLL_SPEED_DESKTOP;
 }
 
+const API_URL = "https://wedding-invitation-i26z.onrender.com/api/wishes";
+
 const urlParams = new URLSearchParams(window.location.search);
 const recipient = (urlParams.get("to") || "Phụng").trim();
 
@@ -39,6 +41,8 @@ let autoScrollTimer = null;
 
 let userInteracting = false;
 let lastTouchTime = 0;
+
+//  MUSIC
 
 function stopAllMusic() {
   [coverMusic, openMusic, insideMusic].forEach((audio) => {
@@ -162,7 +166,9 @@ if (openBtn) {
   );
 }
 
-document.body.style.overflow = "";
+document.body.style.overflow = "hidden";
+
+//  auto scroll
 
 function startAutoScroll() {
   if (autoScrollActive) return;
@@ -170,14 +176,16 @@ function startAutoScroll() {
   autoScrollActive = true;
 
   let lastTime = performance.now();
-  let position = window.scrollY;
+  let position = window.scrollY; // vị trí thực (giữ số lẻ)
 
   function scroll(now) {
     if (!autoScrollActive) return;
 
+    // thời gian giữa 2 frame (giây), giới hạn để không bị nhảy vọt khi trang đơ
     const dt = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
 
+    // nếu vị trí bị thay đổi bên ngoài (người dùng kéo, lightbox...) thì đồng bộ lại
     if (Math.abs(window.scrollY - position) > 2) {
       position = window.scrollY;
     }
@@ -186,9 +194,9 @@ function startAutoScroll() {
 
     window.scrollTo({ top: position, behavior: "instant" });
 
+    // tới cuối trang thì dừng
     const maxScroll =
       document.documentElement.scrollHeight - window.innerHeight;
-
     if (position >= maxScroll) {
       stopAutoScroll();
       return;
@@ -307,6 +315,7 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+//  petals
 (function scatterPetals() {
   const wrap = document.querySelector(".cover__petals");
 
@@ -326,6 +335,7 @@ window.addEventListener("keydown", (e) => {
   }
 })();
 
+// Reveal
 const revealItems = document.querySelectorAll("[data-reveal]");
 
 const revealObserver = new IntersectionObserver(
@@ -346,6 +356,7 @@ revealItems.forEach((el) => {
   revealObserver.observe(el);
 });
 
+//  gallery
 const galleryItems = Array.from(document.querySelectorAll(".gallery__item"));
 
 const moreCount = document.querySelector(".gallery__more-count");
@@ -460,6 +471,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+//  COUNTDOWN
 const target = new Date(WEDDING_DATETIME).getTime();
 
 const cdDays = document.getElementById("cdDays");
@@ -499,6 +511,8 @@ function tickCountdown() {
 tickCountdown();
 setInterval(tickCountdown, 1000);
 
+//  gg calendar
+
 function toGCalStamp(isoLocal) {
   return isoLocal.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 }
@@ -532,7 +546,186 @@ document.querySelectorAll("[data-cal]").forEach((btn) => {
     window.open(url, "_blank", "noopener");
   });
 });
+//  WISHES
 
+const wishForm = document.getElementById("wishForm");
+const wishList = document.getElementById("wishList");
+
+const nameInput = document.getElementById("wishName");
+const messageInput = document.getElementById("wishMessage");
+
+function createWishElement(wish) {
+  const li = document.createElement("li");
+  li.className = "wish-card";
+
+  const head = document.createElement("div");
+  head.className = "wish-card__head";
+
+  const name = document.createElement("span");
+  name.className = "wish-card__name";
+
+  name.textContent = wish.name || wish.senderName || wish.userName || "Khách";
+
+  const time = document.createElement("span");
+  time.className = "wish-card__time";
+
+  const createdAt =
+    wish.createdAt || wish.created_at || wish.createdDate || wish.date;
+
+  if (createdAt) {
+    const date = new Date(createdAt);
+
+    if (!Number.isNaN(date.getTime())) {
+      time.textContent = date.toLocaleString("vi-VN");
+    } else {
+      time.textContent = "Vừa xong";
+    }
+  } else {
+    time.textContent = "Vừa xong";
+  }
+
+  const message = document.createElement("p");
+  message.className = "wish-card__text";
+
+  message.textContent = wish.message || wish.content || wish.text || "";
+
+  head.appendChild(name);
+  head.appendChild(time);
+
+  li.appendChild(head);
+  li.appendChild(message);
+
+  return li;
+}
+
+/* Chuẩn hóa dữ liệu API */
+function normalizeWishes(data) {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (data && Array.isArray(data.wishes)) {
+    return data.wishes;
+  }
+
+  if (data && Array.isArray(data.data)) {
+    return data.data;
+  }
+
+  if (data && Array.isArray(data.results)) {
+    return data.results;
+  }
+
+  return [];
+}
+
+/* Tải lời chúc từ MongoDB */
+async function loadWishes() {
+  if (!wishList) return;
+
+  wishList.innerHTML = "";
+
+  try {
+    const url = API_URL;
+
+    console.log("Đang tải lời chúc:", url);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`GET wishes failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    console.log("Dữ liệu lời chúc:", data);
+
+    const wishes = normalizeWishes(data);
+
+    wishes.forEach((wish) => {
+      wishList.appendChild(createWishElement(wish));
+    });
+
+    console.log(`Đã tải ${wishes.length} lời chúc`);
+  } catch (error) {
+    console.error("Lỗi lấy lời chúc:", error);
+  }
+}
+
+/* Gửi lời chúc */
+if (wishForm) {
+  wishForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const name = nameInput ? nameInput.value.trim() : "";
+
+    const message = messageInput ? messageInput.value.trim() : "";
+
+    if (!name || !message) return;
+
+    const submitButton = wishForm.querySelector('button[type="submit"]');
+
+    try {
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Đang gửi...";
+      }
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+
+        body: JSON.stringify({
+          recipient,
+          name,
+          message,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`POST wishes failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      console.log("Lời chúc đã lưu:", data);
+
+      const savedWish = data.wish || data.data || data;
+
+      if (savedWish && wishList) {
+        wishList.prepend(createWishElement(savedWish));
+      }
+
+      wishForm.reset();
+
+      /* Tải lại từ database để chắc chắn dữ liệu đã lưu */
+      await loadWishes();
+    } catch (error) {
+      console.error("Lỗi gửi lời chúc:", error);
+
+      alert("Không thể gửi lời chúc. Vui lòng thử lại.");
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "Gửi Lời Chúc";
+      }
+    }
+  });
+}
+
+loadWishes();
+
+// music button
 if (musicToggle) {
   musicToggle.addEventListener("click", () => {
     if (!insideMusicStarted || !insideMusic) {
@@ -555,6 +748,7 @@ if (musicToggle) {
   });
 }
 
+// cleanup
 window.addEventListener("beforeunload", () => {
   clearTimeout(autoScrollTimer);
   stopAutoScroll();
